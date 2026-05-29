@@ -34,14 +34,14 @@ Character data comes from the [booru-characters](https://huggingface.co/datasets
 ### Option A — run directly with `uvx` (recommended)
 
 ```bash
-uvx --from git+https://github.com/<your-username>/anima-prompt-generator mcp-danbooru
+uvx --from git+https://github.com/tcpassos/mcp-danbooru-characters mcp-danbooru
 ```
 
 ### Option B — install from source
 
 ```bash
-git clone https://github.com/<your-username>/anima-prompt-generator
-cd anima-prompt-generator
+git clone https://github.com/tcpassos/mcp-danbooru-characters
+cd mcp-danbooru-characters
 pip install -e .
 mcp-danbooru
 ```
@@ -57,7 +57,7 @@ Add the server to your MCP client config (e.g. Claude Desktop `claude_desktop_co
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/<your-username>/anima-prompt-generator",
+        "git+https://github.com/tcpassos/mcp-danbooru-characters",
         "mcp-danbooru"
       ]
     }
