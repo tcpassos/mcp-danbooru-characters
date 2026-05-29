@@ -1,0 +1,2 @@
+# Treat all JSONL data files as binary to prevent line-ending conversion
+*.jsonl binary
