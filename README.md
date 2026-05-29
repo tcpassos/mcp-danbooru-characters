@@ -1,6 +1,6 @@
 # mcp-danbooru-characters
 
-An MCP server that lets AI models look up Danbooru anime character visual tags for image generation. Designed to work with the [Anima](https://huggingface.co/Lykon/dreamshaper-8) model family, but compatible with any booru-aware image generator.
+An MCP server that lets AI models look up Danbooru anime character visual tags for image generation. Compatible with any booru-aware image generator.
 
 ## What it does
 
