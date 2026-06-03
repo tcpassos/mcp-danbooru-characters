@@ -2,6 +2,37 @@ from mcp.server.fastmcp import FastMCP
 import json
 import os
 import re
+import asyncio
+
+try:
+    # Installed as package (e.g. via pip install -e .)
+    from mcp_danbooru.related_tags import (
+        CATEGORY_GENERAL,
+        CATEGORY_ARTIST,
+        CATEGORY_COPYRIGHT,
+        CATEGORY_CHARACTER,
+        CATEGORY_META,
+        CooccurrenceIndex,
+        get_related_tags as _get_related_tags,
+    )
+except ImportError:
+    # Run as script: python server.py — sibling file in same directory
+    from related_tags import (  # type: ignore[no-redef]
+        CATEGORY_GENERAL,
+        CATEGORY_ARTIST,
+        CATEGORY_COPYRIGHT,
+        CATEGORY_CHARACTER,
+        CATEGORY_META,
+        CooccurrenceIndex,
+        get_related_tags as _get_related_tags,
+    )
+
+# Load local CSV index from the bundled data/ directory (no env vars needed).
+# Falls back to Danbooru HTTP API only if the CSV files are not present.
+try:
+    _cooc_index: CooccurrenceIndex | None = CooccurrenceIndex()
+except Exception:
+    _cooc_index = None
 
 mcp = FastMCP(
     "DanbooruCharacters",
@@ -51,9 +82,12 @@ def _character_tag(record: dict) -> str:
 def _format_entry(record: dict) -> str:
     """Format a single result with clearly separated character_tag and prompt_tags.
     character_tag is the exact tag to reference the character in a prompt.
+    franchise_tag is the first copyright tag (underscore format, e.g. sono_bisque_doll_wa_koi_wo_suru).
     prompt_tags is the full comma-separated list ready for Anima."""
     char_tag = _character_tag(record)
-    return f"character_tag: {char_tag}\nprompt_tags: {_build_tag_string(record)}"
+    copyrights = record.get("copyright") or []
+    franchise_line = f"\nfranchise_tag: {copyrights[0]}" if copyrights else ""
+    return f"character_tag: {char_tag}{franchise_line}\nprompt_tags: {_build_tag_string(record)}"
 
 def _build_tag_string(record: dict) -> str:
     """Assemble a prompt-ready tag string from the structured record fields."""
@@ -102,7 +136,7 @@ def _build_indexes(by_id):
     return name_index, series_index, trait_index
 
 def _load():
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "characters.jsonl")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "characters.jsonl")
     by_id = {}
     by_name = {}
     with open(path, encoding="utf-8") as f:
@@ -345,6 +379,65 @@ def get_character_outfit(character_name: str) -> str:
         return f"No outfit data found for '{character_name}'."
     char_tag = _character_tag(record)
     return f"character_tag: {char_tag}\noutfit_tags: " + ", ".join(clothing)
+
+
+@mcp.tool()
+async def get_related_tags(
+    tags: str,
+    limit: int = 20,
+    categories: list[int] | None = None,
+    exclude_categories: list[int] | None = None,
+    exclude_tags: list[str] | None = None,
+    exclude_character_traits: bool | None = None,
+) -> str:
+    """Return Danbooru tags that co-occur with one or more input tags.
+
+    tags:
+        A single tag ("cunnilingus") or comma/space-separated list
+        ("2girls, cunnilingus"). Multiple tags produce the *intersection*
+        of their related sets — tags relevant to the full combination.
+        Falls back to a union ranked by coverage when no intersection exists.
+    limit:
+        Maximum number of tags to return (default 20).
+    categories:
+        Danbooru category IDs to include. Defaults to [0] (general tags —
+        actions, positions, objects, expressions). Available constants:
+        0=general, 1=artist, 3=copyright, 4=character, 5=meta.
+        Pass null/None to include all categories.
+    exclude_categories:
+        Category IDs to always exclude regardless of `categories`.
+    exclude_tags:
+        Specific tags to remove from the result (case/underscore-insensitive).
+
+    Returns a comma-separated list of related tags, or a message when none
+    are found.
+
+    Examples:
+        get_related_tags("cunnilingus")
+        get_related_tags("2girls, cunnilingus", limit=15)
+        get_related_tags("cunnilingus", exclude_tags=["2girls", "group sex"])
+        get_related_tags("portrait", categories=[0], limit=10)
+    """
+    if _cooc_index is not None:
+        result = _cooc_index.query(
+            tags=tags,
+            limit=limit,
+            categories=categories,
+            exclude_categories=exclude_categories,
+            exclude_tags=exclude_tags,
+            exclude_character_traits=exclude_character_traits if exclude_character_traits is not None else True,
+        )
+    else:
+        result = await _get_related_tags(
+            tags=tags,
+            limit=limit,
+            categories=categories,
+            exclude_categories=exclude_categories,
+            exclude_tags=exclude_tags,
+        )
+    if not result:
+        return f"No related tags found for: {tags}"
+    return ", ".join(result)
 
 
 # ---------------------------------------------------------------------------
