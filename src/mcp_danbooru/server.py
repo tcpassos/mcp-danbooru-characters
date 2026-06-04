@@ -382,6 +382,36 @@ def get_character_outfit(character_name: str) -> str:
 
 
 @mcp.tool()
+def suggest_tags(concept: str, max_results: int = 8) -> str:
+    """Convert a natural-language SCENE / POSE / LIGHTING / CAMERA concept into
+    native Danbooru tags the image model was actually trained on.
+
+    Use this when you have a free-text idea ("camera angled low looking up",
+    "soft god rays through the trees", "she peeks around the corner") and want the
+    canonical Danbooru tags that trigger reliably, instead of inventing weak
+    free-text. Weave the returned tags into the prompt alongside natural language.
+
+    Best results with a SHORT, concrete concept (a phrase, not a paragraph).
+
+    NOTE: this is for general scene/pose/lighting/camera/action vocabulary. For a
+    character's identity and appearance, use search_characters / get_character_tags
+    instead (those are authoritative; do not source character tags from here).
+
+    Returns a comma-separated list of canonical Danbooru tags."""
+    try:
+        from .tag_search import search
+
+        tags = search(concept, k=max_results)
+    except FileNotFoundError as exc:
+        return f"Error: {exc}"
+    except Exception as exc:  # keep the server alive on any embed/index failure
+        return f"Error: tag search failed: {exc}"
+    if not tags:
+        return f"No tags found for: {concept}"
+    return ", ".join(tags)
+
+
+@mcp.tool()
 async def get_related_tags(
     tags: str,
     limit: int = 20,

@@ -10,6 +10,16 @@ Given a character name or a set of visual traits, the server returns structured 
 
 Character data comes from the [booru-characters](https://huggingface.co/datasets/Sn0w123/booru-characters) dataset by **Sn0w123** on Hugging Face. It contains 21,000+ structured Danbooru character entries with gender, characteristics, clothing, copyright, and relationship graph fields.
 
+## Tag vocabulary search (`suggest_tags`)
+
+`suggest_tags` maps a natural-language concept ("camera angled low looking up", "soft god rays through the trees") to the canonical Danbooru tags the image model was trained on. It runs a lexical-dominant hybrid: literal tag-name containment plus a semantic search over each tag's Danbooru wiki description. The embeddings are precomputed into `data/tag_vocab/` (regenerate with `scripts/build_tag_vocab.py`); at runtime only the query is embedded.
+
+**Credits / attribution**
+
+- Tag descriptions: [**patvessel/danbooru-rag-G-v3**](https://huggingface.co/datasets/patvessel/danbooru-rag-G-v3) (licensed **CC-BY-SA-4.0**), a cleaned form of the Danbooru tag wiki ([patvessel/danbooru-wiki-2606](https://huggingface.co/datasets/patvessel/danbooru-wiki-2606)). Wiki content © its Danbooru contributors.
+- Embedding model: [**sentence-transformers/all-MiniLM-L6-v2**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2).
+- Runtime embeddings via [**fastembed**](https://github.com/qdrant/fastembed) (ONNX, no PyTorch).
+
 ## Tools
 
 | Tool | Description |
@@ -21,6 +31,8 @@ Character data comes from the [booru-characters](https://huggingface.co/datasets
 | `get_character_outfit(name)` | Returns clothing tags only. |
 | `get_character_variants(name, max_results)` | Lists costume/form variants of a character. |
 | `list_series_characters(series, max_results)` | Lists all characters from a franchise, sorted by popularity. |
+| `suggest_tags(concept, max_results)` | Turns a natural-language scene/pose/lighting/camera concept (e.g. `"camera angled low looking up"`) into native Danbooru tags. Semantic + lexical search over the tag vocabulary. |
+| `get_related_tags(tags, ...)` | Returns Danbooru tags that co-occur with the input tag(s), from co-occurrence data. |
 
 ## Prompts
 
