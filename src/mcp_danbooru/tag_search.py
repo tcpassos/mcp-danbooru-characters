@@ -76,6 +76,17 @@ def _embed_query(text: str) -> np.ndarray:
     return v / n if n else v
 
 
+def warm() -> None:
+    """Eagerly load the artifact + embedding model in the calling (main) thread.
+
+    Call this at server startup, BEFORE the async MCP stdio loop starts. Loading
+    onnxruntime lazily inside an async tool handler crashes the stdio server
+    (native crash, no traceback); warming up front avoids it.
+    """
+    _load_artifact()
+    _embed_query("warmup")
+
+
 def search(concept: str, k: int = 8, candidates: int = 60) -> list[str]:
     """Return up to `k` native Danbooru tags (spaced) matching `concept`."""
     _load_artifact()

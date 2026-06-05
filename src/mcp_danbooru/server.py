@@ -399,8 +399,10 @@ def suggest_tags(concept: str, max_results: int = 8) -> str:
 
     Returns a comma-separated list of canonical Danbooru tags."""
     try:
-        from .tag_search import search
-
+        try:
+            from .tag_search import search  # installed as a package
+        except ImportError:
+            from tag_search import search  # run as a script: python server.py
         tags = search(concept, k=max_results)
     except FileNotFoundError as exc:
         return f"Error: {exc}"
@@ -539,6 +541,19 @@ def find_character_for_scene(
 # ---------------------------------------------------------------------------
 
 def run():
+    # Pre-load the tag-search embedding model in this (main) thread before the
+    # async MCP loop starts. Lazy onnxruntime init inside an async tool handler
+    # crashes the stdio server (native crash, no traceback). Warming is best-effort:
+    # if deps/artifact are missing, suggest_tags returns an error but the rest works.
+    import sys
+    try:
+        try:
+            from .tag_search import warm
+        except ImportError:
+            from tag_search import warm
+        warm()
+    except Exception as exc:
+        print(f"[mcp-danbooru] tag-search warmup skipped: {exc}", file=sys.stderr)
     mcp.run()
 
 if __name__ == "__main__":
